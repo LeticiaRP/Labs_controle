@@ -3,24 +3,30 @@ clc;
 clear all;
 
 % ARDUINO ----------------------------------------------------------------------------------------------------------------------------
-%a = arduino('COM3', 'Uno', 'Libraries', 'Adafruit/DHTxx');
+a = arduino('COM7', 'Uno', 'Libraries', 'Adafruit/DHTxx');
 
 % SENSOR ----------------------------------------------------------------------------------------------------------------------------
-%sensor_dht = addon(a, 'Adafruit/DHTxx', 'D5','DHT11');
+sensor_dht = addon(a, 'Adafruit/DHTxx', 'D5','DHT11');
 
 % CONSTANTES PID ---------------------------------------------------------------------------------------------------------------------
 SETPOINT = 50;
-KP = 2.5;
-KI = 0.1;
-KD = 0;
+KC = 1; 
 
 % Define os limites do PID
-minPID = 10;
-maxPID = -10;
+minPID = -10;
+maxPID = 10;
 
 % VARIAVEIS PID ----------------------------------------------------------------------------------------------------------------------
 pid = 0;
 last_pid = 0;
+
+proporcional = 0; 
+integrativo = 0; 
+last_integrativo = 0; 
+derivativo = 0; 
+
+eaw = 0; 
+last_eaw = 0; 
 
 % measure = readTemperature(sensor_dht);
 measure = 25; 
@@ -38,7 +44,10 @@ maxDuty = 1;
 signal_frequency = 2; 
 
 % TEMPO DE AMOSTRAGEM ------------------------------------------------------------------------------------------------------------------
-ts = 2;
+TS = 2;
+TAW = 2;
+ti = 1; 
+td = 1;
 current_time = tic;
 elapse_time = toc(current_time);
 
@@ -52,7 +61,6 @@ temperature = animatedline('Color', 'b', 'LineWidth', 1.5);
 setpoint = animatedline('Color', 'r', 'LineStyle', '--', 'LineWidth', 1.5);
 setpoint.DisplayName = 'setpoint';
 temperature.DisplayName = 'temperatura'
-ylim([20, 70]); 
 legend('show');
 
 figure(2); 
@@ -76,25 +84,34 @@ d_output = animatedline('Color', 'g', 'LineWidth', 1.5);
 
 
 while (true)
-    %measure = readTemperature(sensor_dht);
-    measure = 25;
+    measure = readTemperature(sensor_dht);
     
     elapse_time = toc(current_time);
 
-    if (elapse_time > ts)
+    if (elapse_time > TS)
         
         error = measure - SETPOINT;
 
-        pid = last_pid + error * (KP + KI * ts + KD / ts) - last_error * (KP + (2 * KD) / ts) + last2_error * (KD / ts);
+        proporcional = KC * error; 
+        integrativo = last_integrativo + ((KC*TS)/ti)*last_error + (TS/TAW)*last_eaw; 
+        derivativo = ((KC*td)/ts) * (error - last_error);
+        pid = proporcional + integrativo + derivativo; 
 
-        proporcional = KP*(error - last_error); 
-        integrativo = KI*(error * ts); 
-        derivativo = KD*(error - 2*last_error + last2_error)/ts;
+        if pid <= minPID
+            uf = minPID; 
+            elseif pid >= maxPID
+                uf = maxPID;
+            else
+                uf = pid;
+        end 
 
-        duty = (pid - minPID) / (maxPID - minPID) * (maxDuty - minDuty) + minDuty;
-        duty = max(minDuty, min(maxDuty, duty));
+        eaw = uf - pid; 
+        last_eaw = eaw; 
+        
+        % duty = (pid - minPID) / (maxPID - minPID) * (maxDuty - minDuty) + minDuty;
+        % duty = max(minDuty, min(maxDuty, duty));
 
-        time_axis = round(double(current_time), 2)
+        time_axis = round(double(current_time), 2);
         
         addpoints(temperature, time_axis, measure);
         addpoints(setpoint, time_axis, SETPOINT);
@@ -106,11 +123,11 @@ while (true)
         drawnow;
 
         current_time = tic;
-        % fprintf('Temp=%d | Ts=%d | Error=%d PID=%d|Duty=%d\n', measure,elapse_time,error,pid,duty);
+        fprintf('Temp=%d | Ts=%d | Error=%d PID=%d|Duty=%d\n', measure,elapse_time,error,pid,duty);
         fprintf('PID = %d | P = %d | I = %d | D = %d \n', pid, proporcional, integrativo, derivativo);
     end
 
-    generatePWM(1, signal_frequency, duty);
+    generatePWM(a, signal_frequency, duty);
 
     last_pid = pid;
     last_error = error;
@@ -135,14 +152,14 @@ function generatePWM(ino, frequency, dutyCycle)
 
     % Liga o sinal
     if high ~= 0
-    %    writeDigitalPin(ino, 'D7', 1);
+       writeDigitalPin(ino, 'D7', 1);
        pause(high);
     end
 
     % Desliga o sinal
     low = period - high;
     if low ~= 0
-        % writeDigitalPin(ino, 'D7', 0);
+        writeDigitalPin(ino, 'D7', 0);
         pause(low);
     end
 end
