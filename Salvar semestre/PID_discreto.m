@@ -4,8 +4,8 @@ clc;
 clear all; 
 
 % ---------- setup hardware
-%arduino = arduino('COM7', 'Uno', 'Libraries', 'Adafruit/DHTxx');
-%sensor_dht = addon(a, 'Adafruit/DHTxx', 'D5','DHT11');
+arduino = arduino('COM7', 'Uno', 'Libraries', 'Adafruit/DHTxx');
+sensor_dht = addon(a, 'Adafruit/DHTxx', 'D5','DHT11');
 
 % ---------- variáveis PID
 SETPOINT = 50; 
@@ -77,8 +77,7 @@ d_output = animatedline('Color', 'g', 'LineWidth', 1.5);
 while(true)
     % verifica quanto tempo passou desde a função tic 
     elapse_time = toc;
-    sensor_measure = 25 %readTemperature(sensor_dht);
-
+    sensor_measure = readTemperature(sensor_dht);
 
     if (elapse_time > TS) 
 
