@@ -18,10 +18,11 @@ Td = 1
 min_PID = 0;
 max_PID = 0;
 
-pid_output = [0,0,0];
-k = 3;
+pid_output = 0;
+integrative = [0,0]; 
+k = 2;
 
-error = [0,0,0]; 
+error = [0,0]; 
 
 % --------- setup PWM 
 time_on = 0;
@@ -84,13 +85,13 @@ while(true)
 
         error(k) = sensor_measure - SETPOINT; 
 
-        pid_output(k) = pid_output(k-1) + Kc*(1 + Td/Ts)*error(k-1) - Kc*[1 - (Ts/Ti) + 2*(Td/Ts)]*error(k-1) + Kc*(Td/Ts)*error(k-2) ;
-    
-        proporcional = Kc*(1 + Td/Ts)*error(k-1); 
-        integrativo = Kc*[1 - (Ts/Ti) + 2*(Td/Ts)]*error(k-1); 
-        derivativo = Kc*(Td/Ts)*error(k-2);
+        proporcional = Kc*error(k); 
+        integrative(k) = integrative(k-1) + Kc*(Ts/Ti)*error(k-1)  
+        derivative = Kc*(Td/Ts)*[error(k) - error(k-1)]
 
-        duty_output = (pid_output(k) - min_PID) / (max_PID - min_PID) * (max_duty - min_duty) + min_duty;
+        pid_output = proporcional + integrative(k) + derivative;
+
+        duty_output = (pid_output - min_PID) / (max_PID - min_PID) * (max_duty - min_duty) + min_duty;
         duty_output = max(min_duty, min(max_duty, duty_output));
 
         time_axis = toc(t0);
@@ -98,23 +99,22 @@ while(true)
         addpoints(temperature, time_axis, sensor_measure);
         addpoints(setpoint, time_axis, SETPOINT);
         addpoints(duty_output_, time_axis, duty_output);
-        addpoints(pid_output_, time_axis, pid_output(k)); 
+        addpoints(pid_output_, time_axis, pid_output); 
         addpoints(p_output, time_axis, proporcional); 
-        addpoints(i_output, time_axis, integrativo); 
-        addpoints(d_output, time_axis, derivativo); 
+        addpoints(i_output, time_axis, integrative(k)); 
+        addpoints(d_output, time_axis, derivative); 
 
         drawnow;
         
         fprintf('Temp=%d | Ts=%d | Error=%d PID=%d|Duty=%d\n', sensor_measure, elapse_time, error(k), pid_output(k-1), duty_output);
-        fprintf('PID = %d | P = %d | I = %d | D = %d \n', pid_output(k), proporcional, integrativo, derivativo);
+        fprintf('PID = %d | P = %d | I = %d | D = %d \n', pid_output, proporcional, integrative(k), derivative);
         disp('no if')
         
         tic; % restart the timer
     end
 
-    pid_output(k-1) = pid_output(k);
+    integrative(k-1) = integrative(k);
     error(k-1) = error(k);
-    error(k-2) = error(k-1);
 end
 
 function generatePWM(ino, frequency, dutyCycle)
@@ -138,3 +138,4 @@ function generatePWM(ino, frequency, dutyCycle)
         pause(time_off);
     end
 end
+    
