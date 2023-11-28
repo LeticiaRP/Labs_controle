@@ -4,19 +4,18 @@ clc;
 clear all; 
 
 % ---------- setup hardware
-% arduino = arduino('COM7', 'Uno', 'Libraries', 'Adafruit/DHTxx');
-% sensor_dht = addon(a, 'Adafruit/DHTxx', 'D5','DHT11');
+ arduino = arduino('COM3', 'Uno', 'Libraries', 'Adafruit/DHTxx');
+sensor_dht = addon(arduino, 'Adafruit/DHTxx', 'D5','DHT11');
 
 % ---------- variáveis PID legado
 SETPOINT = 50; 
 
-Kc = 1
-Ti = 1
-Td = 1
+Kc = (1.2*75.5)/3.2
+Ti = 2*3.2
+Td = 0.5*3.53
 
-
-min_PID = 0;
-max_PID = 0;
+min_PID = -500;
+max_PID = 500;
 
 pid_output = 0;
 k = 2;
@@ -27,18 +26,18 @@ error = [0,0];
 integrative = [0,0]; 
 tau = 1; 
 
-min_output = 1; 
-max_output = 1; 
+min_output = -500; 
+max_output = 500; 
 
 limiter_output = 1; 
 
 % --------- setup PWM 
 time_on = 0;
 time_off = 0;
-frequency = 0;
+frequency = 2;
 
 duty_output = 0;
-max_duty = 0;
+max_duty = 1;
 min_duty = 0; 
 
 % ---------- tempo de amostragem 
@@ -87,11 +86,11 @@ d_output = animatedline('Color', 'g', 'LineWidth', 1.5);
 while(true)
     % verifica quanto tempo passou desde a função tic 
     elapse_time = toc;
-    sensor_measure = 25 %readTemperature(sensor_dht);
+    sensor_measure = readTemperature(sensor_dht);
 
     if (elapse_time > Ts) 
 
-        error(k) = sensor_measure - SETPOINT; 
+        error(k) = SETPOINT - sensor_measure; 
 
         proporcional = Kc*error(k); 
         integrative(k) = integrative(k-1) + Kc*(Ts/Ti)*error(k-1); 
@@ -138,6 +137,8 @@ while(true)
 
     integrative(k-1) = integrative(k);
     error(k-1) = error(k);
+
+    generatePWM(arduino, frequency, duty_output)
 end
 
 function generatePWM(ino, frequency, dutyCycle)
