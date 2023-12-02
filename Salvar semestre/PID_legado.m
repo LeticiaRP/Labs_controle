@@ -10,9 +10,12 @@ clear all;
 % ---------- variáveis PID legado
 SETPOINT = 50; 
 
-Kc = (1.2*75.5)/3.2
-Ti = 2*3.2
-Td = 0.5*3.53
+T = 30.87815;
+L = 4.079202
+
+Kc = 1.2 * (T/L)
+Ti = 0.5/L
+Td = 0.5*L
 
 
 min_PID = 0;

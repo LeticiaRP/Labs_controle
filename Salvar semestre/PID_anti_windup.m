@@ -10,17 +10,20 @@ sensor_dht = addon(arduino, 'Adafruit/DHTxx', 'D5','DHT11');
 % ---------- variáveis PID legado
 SETPOINT = 50; 
 
-Kc = (1.2*75.5)/3.2
-Ti = 2*3.2
-Td = 0.5*3.53
+T = 65.87815;
+L = 3.079202
 
-min_PID = -500;
-max_PID = 500;
+Kc = 1.2 * (T/L)
+Ti = 0.5/L
+Td = 0.5*L
+
+min_PID = -1000;
+max_PID = 1000;
 
 pid_output = 0;
 k = 2;
 
-error = [0,0]; 
+error = [25,25]; 
 
 % --------- anti-windup
 integrative = [0,0]; 

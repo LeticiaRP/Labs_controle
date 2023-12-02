@@ -4,8 +4,8 @@ clc;
 clear all; 
 
 % ---------- setup hardware
-arduino = arduino('COM7', 'Uno', 'Libraries', 'Adafruit/DHTxx');
-sensor_dht = addon(a, 'Adafruit/DHTxx', 'D5','DHT11');
+arduino = arduino('COM3', 'Uno', 'Libraries', 'Adafruit/DHTxx');
+sensor_dht = addon(arduino, 'Adafruit/DHTxx', 'D5','DHT11');
 
 % ---------- gráficos
 figure(1); 
@@ -26,7 +26,7 @@ t0 = tic;
 elapse_time = toc;
 
 % ---------- Degrau
-writeDigitalPin(a, 'D7', 1);
+writeDigitalPin(arduino, 'D7', 1);
 
 while(true)
     % verifica quanto tempo passou desde a função tic 
