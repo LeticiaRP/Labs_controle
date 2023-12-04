@@ -1,31 +1,41 @@
- % ------- cleaning the console 
+% ------- cleaning the console 
 clc; 
 clear all; 
+
+
 
 % ------- hardware configuration 
 esp = arduino('/dev/ttyUSB0', 'ESP32-WROOM-DevKitV1', 'Libraries','I2C');
 imu = bno055(esp, 'OperatingMode', 'ndof', 'ReadMode','latest');
 
-motor1_IN1 = 'D25'
-motor1_IN2 = 'D33' 
-motor2_IN1 = 'D27'
-motor2_IN2 = 'D26'
+motor1_IN1 = 'D25';
+motor1_IN2 = 'D33';
+motor2_IN1 = 'D27';
+motor2_IN2 = 'D26';
+
+
 
 % ------- ROS2 connection 
-angle_node = ros2node("/setpoint_angle")
-pause(5) % PRECISA DESSE DELAY
-angle_sub = ros2subscriber(angle_node, "/setpoint/angle")
+angle_node = ros2node("/setpoint_angle");
+pause(5);                                                 % PRECISA DESSE DELAY
+angle_sub = ros2subscriber(angle_node, "/setpoint/angle");
+
 [IN_BALANCE_SETPOINT,status,statustext] = receive(angle_sub,10);
+
+
 
 % ------ calibration of the bno sensor
 sensor_calibration 
 
+
+
 % ------ make the graphics setups
 graphics
 
-% IN_BALANCE_SETPOINT = pi/2; 
 
 
+% ------ inicialize the controller variables 
+% controller_variables
 KP = 1;
 KI = 0; 
 KD = 0; 
@@ -34,7 +44,7 @@ Ts = 0.2;
 tau = 1; 
 t0 = tic; 
 
-cut_off_freq = 1 % in rad
+cut_off_freq = 1; % in rad
 
 k = 2;
 
@@ -48,11 +58,15 @@ pid_output = 0;
 min_output = -1;
 max_output = 1;
 
-while(status == 1)
+
+
+while(statustext == 'success')  
+
+    % receive the topic message
     [IN_BALANCE_SETPOINT,status,statustext] = receive(angle_sub,10);
 
     elapse_time = toc; 
-    imu_data = read(imu)
+    imu_data = read(imu);
 
     robot_pitch = imu_data.Orientation(end, 2);
     
@@ -69,7 +83,7 @@ while(status == 1)
 
 
         %! -------------------------- DERIVATIVE WITH LOW-PASS FILTER
-        derivative = (KD/Ts)*[error(k) - error(k-1)]
+        derivative = (KD/Ts)*[error(k) - error(k-1)];
         low_pass_filter(k) = [derivative_filter(k-1) + cut_off_freq*error(k) - cut_off_freq*error(k-1)]/cut_off_freq*Ts; 
 
 
@@ -82,10 +96,10 @@ while(status == 1)
             limiter_output = min_output; 
 
             elseif pid_output >= max_output
-                limiter_output = max_output
+                limiter_output = max_output;
 
             else 
-                limiter_output = pid_output
+                limiter_output = pid_output;
         end 
 
         %! -------------------------- MOTORS ACTUATION
@@ -103,23 +117,28 @@ while(status == 1)
             writePWMDutyCycle(esp, motor2_IN2, 0);
         end 
 
-        % graphics_updade()
+        
 
         time_axis = toc(t0);
         
         addpoints(angle, time_axis, robot_pitch);
         addpoints(setpoint, time_axis, IN_BALANCE_SETPOINT.data);
-        % addpoints(duty_output_, time_axis, duty_output);
+        addpoints(error_, time_axis, error(k));
         addpoints(pid_output_, time_axis, pid_output); 
         addpoints(p_output, time_axis, proporcional); 
         addpoints(i_output, time_axis, integrative(k)); 
         addpoints(d_output, time_axis, derivative); 
     
         drawnow;
+    
+
+
     end
 
+    error(k-1) = error(k)
+
+    integrative(k-1) = integrative(k)
+
+    low_pass_filter(k-1) = low_pass_filter(k)
 
 end
-
-
-

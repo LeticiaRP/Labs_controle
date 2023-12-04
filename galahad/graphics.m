@@ -1,3 +1,14 @@
+global angle
+global setpoint
+
+global duty_output
+global pid_output_
+global p_output
+global i_output
+global d_output
+
+global time_axis
+
 figure(1);
 subplot(2,1,1);  
 xlabel('Time');
@@ -10,10 +21,10 @@ angle.DisplayName = 'current orientation';
 legend('show');
 
 subplot(2,1,2);  
-xlabel('Tempo');
-ylabel("Duty Cicle");
-title("Duty Cicle Output");
-duty_output_ = animatedline('Color', 'b', 'LineWidth', 1.5); 
+xlabel('Time');
+ylabel("Pitch");
+title("Error");
+error_ = animatedline('Color', 'b', 'LineWidth', 1.5); 
 
 figure(2); 
 subplot(2,3,[1,2,3]); 
@@ -33,3 +44,4 @@ i_output = animatedline('Color', 'g', 'LineWidth', 1.5);
 subplot(2,3,6); 
 title('Derivative'); 
 d_output = animatedline('Color', 'g', 'LineWidth', 1.5);
+
