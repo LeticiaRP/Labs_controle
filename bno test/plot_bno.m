@@ -2,7 +2,7 @@ clc;
 clear all;
 
 % ARDUINO SETUP -------------------------------------------------------------
-a = arduino('COM10', 'ESP32-WROOM-DevKitV1', 'Libraries','I2C');
+a = arduino('/dev/ttyUSB0', 'ESP32-WROOM-DevKitV1', 'Libraries','I2C');
 
 bno = bno055(a, 'OperatingMode', 'ndof');
 

@@ -4,7 +4,7 @@ clc;
 clear all; 
 
 % ---------- setup hardware
-esp = arduino('COM10', 'ESP32-WROOM-DevKitV1', 'Libraries','I2C');
+esp = arduino('/dev/ttyUSB0', 'ESP32-WROOM-DevKitV1', 'Libraries','I2C');
 imu = bno055(esp, 'OperatingMode', 'ndof');
 
 % ---------- variáveis PID legado
@@ -14,7 +14,6 @@ Kc = 1
 Ti = 1
 Td = 1
 
-
 min_PID = 0;
 max_PID = 0;
 
@@ -22,6 +21,10 @@ pid_output = 0;
 k = 2;
 
 error = [0,0]; 
+
+% --------- derivative filter 
+derivative_filter = [0,0];
+cut_off_freq = 1  %rad/s 
 
 % --------- anti-windup
 integrative = [0,0]; 
@@ -51,12 +54,12 @@ elapse_time = toc;
 figure(1);
 subplot(2,1,1);  
 xlabel('Tempo');
-ylabel("Temperatura");
+ylabel("Orientação - pitch");
 title("Controlador de Temperatura");
 temperature = animatedline('Color', 'b', 'LineWidth', 1.5); 
 setpoint = animatedline('Color', 'r', 'LineStyle', '--', 'LineWidth', 1.5);
 setpoint.DisplayName = 'setpoint';
-temperature.DisplayName = 'temperatura';
+temperature.DisplayName = 'angulo';
 legend('show');
 
 subplot(2,1,2);  
@@ -87,8 +90,8 @@ d_output = animatedline('Color', 'g', 'LineWidth', 1.5);
 while(true)
     % verifica quanto tempo passou desde a função tic 
     elapse_time = toc;
-    sensor_data = read(imu); 
-    
+    sensor_data = read(imu);
+    sensor_measure = sensor_data.Orientation(end,2)
 
     if (elapse_time > Ts) 
 
@@ -105,7 +108,7 @@ while(true)
         derivative_filter(k) = [derivative_filter(k-1) + cut_off_freq*error(k) - cut_off_freq*error(k-1)]/cut_off_freq*Ts; 
         derivative = Kc*(Td/Ts)*[error(k) - error(k-1)]
 
-        pid_output = proporcional + integrative(k) + derivative*derivative_filter;
+        pid_output = proporcional + integrative(k) + derivative*derivative_filter(k);
         
         % ------- Limitador
         if pid_output <= min_output
