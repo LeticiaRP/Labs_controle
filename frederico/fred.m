@@ -11,9 +11,16 @@ pause(2)
 rosinit;
 
 orientation_error_sub = rossubscriber('/controller/error','DataFormat','struct'); 
+motion_direction_sub = rossubscriber('/controller/direction', 'DataFormat', 'struct'); 
+
 cmd_vel_pub = rospublisher('/cmd_vel', 'geometry_msgs/Twist'); 
 
 vel_msg = rosmessage(cmd_vel_pub); 
+
+% --------- Limites de velocidade 
+MAX_VEL_LINEAR = 2;
+MIN_VEL_LINEAR = 0.3;
+
 
 
 % ---------- Ganhos
@@ -22,7 +29,7 @@ KI = 0;
 KD = 0;
 
 
-% --------- Limites de saturação
+% --------- Limites da resposta do controlador 
 min_output = -20; 
 max_output = 20; 
 
@@ -67,12 +74,13 @@ while(true)
 
     elapse_time = toc;
     orientation_error = receive(orientation_error_sub,2);
+    motion_direction = receive(motion_direction_sub, 2)
 
     if (elapse_time > Ts) 
 
         % error(k) = sensor_measure - SETPOINT; 
 
-        error(k) = 1; %orientation_error.data;
+        error(k) = orientation_error.data;
 
         proporcional = KP*error(k); 
 
@@ -91,15 +99,17 @@ while(true)
             limiter_output = min_output; 
 
             elseif pid_output >= max_output
-                limiter_output = max_output
+                limiter_output = max_output;
 
             else 
-                limiter_output = pid_output
+                limiter_output = pid_output;
         end 
 
         fprintf('PID output = %d |  Limiter_output = %d\n', pid_output, limiter_output);
 
+        vel_msg.Linear.X = ((1-abs(orientation_error.data)/pi)*(MAX_VEL_LINEAR - MIN_VEL_LINEAR) + MIN_VEL_LINEAR) * motion_direction.data; 
         vel_msg.Angular.Z = limiter_output; 
+
         send(cmd_vel_pub, vel_msg);
         % time_axis = toc(t0);
         
@@ -108,7 +118,7 @@ while(true)
 
     derivative_filter(k-1) = derivative_filter(k);
     integrative(k-1) = integrative(k);
-    error(k-1) = error(k);
+    error(k-1) = error(k);motion_direction
 end
 
 
